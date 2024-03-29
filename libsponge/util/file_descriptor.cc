@@ -29,8 +29,9 @@ FileDescriptor::FDWrapper::~FDWrapper() {
             return;
         }
         close();
-    } catch (const exception &e) {
-        // don't throw an exception from the destructor
+    }
+    catch (const exception& e) {
+     // don't throw an exception from the destructor
         std::cerr << "Exception destructing FDWrapper: " << e.what() << std::endl;
     }
 }
@@ -46,7 +47,7 @@ FileDescriptor FileDescriptor::duplicate() const { return FileDescriptor(_intern
 
 //! \param[in] limit is the maximum number of bytes to read; fewer bytes may be returned
 //! \param[out] str is the string to be read
-void FileDescriptor::read(std::string &str, const size_t limit) {
+void FileDescriptor::read(std::string& str, const size_t limit) {
     constexpr size_t BUFFER_SIZE = 1024 * 1024;  // maximum size of a read
     const size_t size_to_read = min(BUFFER_SIZE, limit);
     str.resize(size_to_read);
@@ -98,11 +99,12 @@ size_t FileDescriptor::write(BufferViewList buffer, const bool write_all) {
     return total_bytes_written;
 }
 
-void FileDescriptor::set_blocking(const bool blocking_state) {
+void FileDescriptor::set_blocking(const bool blocking_state) const {
     int flags = SystemCall("fcntl", fcntl(fd_num(), F_GETFL));
     if (blocking_state) {
         flags ^= (flags & O_NONBLOCK);
-    } else {
+    }
+    else {
         flags |= O_NONBLOCK;
     }
 

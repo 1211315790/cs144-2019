@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.md": "html",
+        "cstddef": "cpp",
+        "stdexcept": "cpp",
+        "string_view": "cpp",
+        "array": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp"
+    }
+}
