@@ -14,76 +14,79 @@
 //! side.  The byte stream is finite: the writer can end the input,
 //! and then no more bytes can be written.
 class ByteStream {
-  private:
-    // Your code here -- add private members as necessary.
+private:
+  // Your code here -- add private members as necessary.
+  std::deque<char> _deq{};
+  size_t _capacity{ 0 };
+  size_t _write_count{ 0 };
+  size_t _read_count{ 0 };
+  bool _error{ false };  //!< Flag indicating that the stream suffered an error.
+  bool _input_ended_flag{ false };
+public:
+  //! Construct a stream with room for `capacity` bytes.
+  ByteStream(const size_t capacity);
 
-    bool _error{};  //!< Flag indicating that the stream suffered an error.
+  //! \name "Input" interface for the writer
+  //!@{
 
-  public:
-    //! Construct a stream with room for `capacity` bytes.
-    ByteStream(const size_t capacity);
+  //! Write a string of bytes into the stream. Write as many
+  //! as will fit, and return how many were written.
+  //! \returns the number of bytes accepted into the stream
+  size_t write(const std::string& data);
 
-    //! \name "Input" interface for the writer
-    //!@{
+  //! \returns the number of additional bytes that the stream has space for
+  size_t remaining_capacity() const;
 
-    //! Write a string of bytes into the stream. Write as many
-    //! as will fit, and return how many were written.
-    //! \returns the number of bytes accepted into the stream
-    size_t write(const std::string &data);
+  //! Signal that the byte stream has reached its ending
+  void end_input();
 
-    //! \returns the number of additional bytes that the stream has space for
-    size_t remaining_capacity() const;
+  //! Indicate that the stream suffered an error.
+  void set_error() { _error = true; }
+  //!@}
 
-    //! Signal that the byte stream has reached its ending
-    void end_input();
+  //! \name "Output" interface for the reader
+  //!@{
 
-    //! Indicate that the stream suffered an error.
-    void set_error() { _error = true; }
-    //!@}
+  //! Peek at next "len" bytes of the stream
+  //! \returns a string
+  std::string peek_output(const size_t len) const;
 
-    //! \name "Output" interface for the reader
-    //!@{
+  //! Remove bytes from the buffer
+  void pop_output(const size_t len);
 
-    //! Peek at next "len" bytes of the stream
-    //! \returns a string
-    std::string peek_output(const size_t len) const;
+  //! Read (i.e., copy and then pop) the next "len" bytes of the stream
+  //! \returns a vector of bytes read
+  std::string read(const size_t len) {
+    const auto ret = peek_output(len);
+    pop_output(len);
+    return ret;
+  }
 
-    //! Remove bytes from the buffer
-    void pop_output(const size_t len);
+  //! \returns `true` if the stream input has ended
+  bool input_ended() const;
 
-    //! Read (i.e., copy and then pop) the next "len" bytes of the stream
-    //! \returns a vector of bytes read
-    std::string read(const size_t len) {
-        const auto ret = peek_output(len);
-        pop_output(len);
-        return ret;
-    }
+  //! \returns `true` if the stream has suffered an error
+  bool error() const { return _error; }
 
-    //! \returns `true` if the stream input has ended
-    bool input_ended() const;
+  //! \returns the maximum amount that can currently be read from the stream
+  size_t buffer_size() const;
 
-    //! \returns `true` if the stream has suffered an error
-    bool error() const { return _error; }
+  //! \returns `true` if the buffer is empty
+  bool buffer_empty() const;
 
-    //! \returns the maximum amount that can currently be read from the stream
-    size_t buffer_size() const;
+  //! \returns `true` if the output has reached the ending
+  bool eof() const;
+  //!@}
 
-    //! \returns `true` if the buffer is empty
-    bool buffer_empty() const;
+  //! \name General accounting
+  //!@{
 
-    //! \returns `true` if the output has reached the ending
-    bool eof() const;
-    //!@}
+  //! Total number of bytes written
+  size_t bytes_written() const;
 
-    //! \name General accounting
-    //!@{
-
-    //! Total number of bytes written
-    size_t bytes_written() const;
-
-    //! Total number of bytes popped
-    size_t bytes_read() const;
-    //!@}
+  //! Total number of bytes popped
+  size_t bytes_read() const;
+  //!@}
 };
 
 #endif  // SPONGE_LIBSPONGE_BYTE_STREAM_HH
