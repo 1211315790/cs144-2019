@@ -8,7 +8,7 @@
             "name": "(gdb) 启动",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/build/tests/byte_stream_one_write",
+            "program": "${workspaceRoot}/build/tests/fsm_stream_reassembler_dup",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

@@ -11,17 +11,16 @@ using namespace std;
 int main() {
     try {
         {
-            ReassemblerTestHarness test{65000};
-
+            ReassemblerTestHarness test{ 65000 };
             test.execute(BytesAssembled(0));
             test.execute(BytesAvailable(""));
             test.execute(NotAtEof{});
         }
 
         {
-            ReassemblerTestHarness test{65000};
+            ReassemblerTestHarness test{ 65000 };
 
-            test.execute(SubmitSegment{"a", 0});
+            test.execute(SubmitSegment{ "a", 0 });
 
             test.execute(BytesAssembled(1));
             test.execute(BytesAvailable("a"));
@@ -29,9 +28,9 @@ int main() {
         }
 
         {
-            ReassemblerTestHarness test{65000};
+            ReassemblerTestHarness test{ 65000 };
 
-            test.execute(SubmitSegment{"a", 0}.with_eof(true));
+            test.execute(SubmitSegment{ "a", 0 }.with_eof(true));
 
             test.execute(BytesAssembled(1));
             test.execute(BytesAvailable("a"));
@@ -39,9 +38,9 @@ int main() {
         }
 
         {
-            ReassemblerTestHarness test{65000};
+            ReassemblerTestHarness test{ 65000 };
 
-            test.execute(SubmitSegment{"", 0}.with_eof(true));
+            test.execute(SubmitSegment{ "", 0 }.with_eof(true));
 
             test.execute(BytesAssembled(0));
             test.execute(BytesAvailable(""));
@@ -49,9 +48,9 @@ int main() {
         }
 
         {
-            ReassemblerTestHarness test{65000};
+            ReassemblerTestHarness test{ 65000 };
 
-            test.execute(SubmitSegment{"b", 0}.with_eof(true));
+            test.execute(SubmitSegment{ "b", 0 }.with_eof(true));
 
             test.execute(BytesAssembled(1));
             test.execute(BytesAvailable("b"));
@@ -59,15 +58,16 @@ int main() {
         }
 
         {
-            ReassemblerTestHarness test{65000};
+            ReassemblerTestHarness test{ 65000 };
 
-            test.execute(SubmitSegment{"", 0});
+            test.execute(SubmitSegment{ "", 0 });
 
             test.execute(BytesAssembled(0));
             test.execute(BytesAvailable(""));
             test.execute(NotAtEof{});
         }
-    } catch (const exception &e) {
+    }
+    catch (const exception& e) {
         cerr << "Exception: " << e.what() << endl;
         return EXIT_FAILURE;
     }
