@@ -33,23 +33,23 @@ void StreamReassembler::push_substring(const std::string& data, const size_t ind
     //看看是否可以合并
     string s;
     size_t tmp_next_offset = _next_offset;
-    std::vector<uint64_t> delete_key;
-    for (auto [key, value] : _mp) {
-        if (key <= tmp_next_offset && key + value.size() >= 1 && key + value.size() - 1 >= tmp_next_offset)
+    std::vector<uint64_t> delete_index;
+    for (auto [key_index, value] : _mp) {
+        if (key_index <= tmp_next_offset && key_index + value.size() >= tmp_next_offset + 1)
         {
-            s += value.substr(tmp_next_offset - key);
-            tmp_next_offset += value.size() - (tmp_next_offset - key);
-            delete_key.push_back(key);
+            s += value.substr(tmp_next_offset - key_index);
+            tmp_next_offset += value.size() - (tmp_next_offset - key_index);
+            delete_index.push_back(key_index);
         }
     }
     //将合并后的字串删除
-    for (auto key : delete_key) {
-        _mp.erase(key);
+    for (auto key_index : delete_index) {
+        _mp.erase(key_index);
     }
     if (s.size() > 0) {
         size_t len = s.size();
-        size_t remain_assemble = _output.bytes_written() - _output.bytes_read();
-        size_t remain_space = _capacity - remain_assemble;
+        size_t use_space = _output.bytes_written() - _output.bytes_read();
+        size_t remain_space = _capacity - use_space;
         if (len <= remain_space) {  //判断剩余的capacity是否够完整写入s
             _output.write(s);
             _next_offset += s.size();
