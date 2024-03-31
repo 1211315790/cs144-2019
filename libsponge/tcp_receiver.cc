@@ -11,20 +11,22 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 using namespace std;
 
 bool TCPReceiver::segment_received(const TCPSegment& seg) {
+    /*
+    ｜             [SYN]  data/payload   [FIN]    ｜
+    ｜      seqno    10    11   12   13    14     ｜
+    ｜absolute seqno  0    [1    2]   3     4     ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                            abs_seq==3      ｜
+    ｜ stream index        [0    1]   2           ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                          next_index==2     ｜
+    */
     size_t next_index = _reassembler.stream_out().bytes_written();
     bool fin_flag = _reassembler.stream_out().input_ended();
-    //              [SYN]  data/payload   [FIN]
-    //      seqno    10    11   12   13    14
-    //absolute seqno  0    [1    2]   3     4   
-    //                                ⬆
-    //                                ⬆
-    //                                ⬆
-    //                            abs_seq==3
-    // stream index        [0    1]   2
-    //                                ⬆
-    //                                ⬆
-    //                                ⬆
-    //                            next_index==2
     //等待第一个SYN
     if (_syn_flag == false && seg.header().syn == false) return false;
     //因网络延迟而导致的重复SYN,丢弃
@@ -57,22 +59,25 @@ bool TCPReceiver::segment_received(const TCPSegment& seg) {
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const {
+     /*
+    ｜             [SYN]  data/payload   [FIN]    ｜
+    ｜      seqno    10    11   12   13    14     ｜
+    ｜absolute seqno  0    [1    2]   3     4     ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                            abs_seq==3      ｜
+    ｜ stream index        [0    1]   2           ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                                ⬆          ｜
+    ｜                          next_index==2     ｜
+    */
     if (!_syn_flag) return std::nullopt;
     uint64_t next_index = _reassembler.stream_out().bytes_written();
     //next_index + 1 == absolute seqno
     uint64_t abs_seq = next_index + 1;
-    //              [SYN]  data/payload   [FIN]
-    //      seqno    10    11   12   13    14
-    //absolute seqno  0    [1    2]   3     4   
-    //                                ⬆
-    //                                ⬆
-    //                                ⬆
-    //                            abs_seq==3
-    // stream index        [0    1]   2
-    //                                ⬆
-    //                                ⬆
-    //                                ⬆
-    //                            next_index==2
+
     bool fin_flag = _reassembler.stream_out().input_ended();
     if (fin_flag) {
         return wrap(abs_seq + 1, _isn);
