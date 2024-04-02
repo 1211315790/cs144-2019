@@ -25,7 +25,6 @@ bool TCPReceiver::segment_received(const TCPSegment& seg) {
     ｜                                ⬆          ｜
     ｜                          next_index==2     ｜
     */
-    size_t next_index = _reassembler.stream_out().bytes_written();
     bool fin_flag = _reassembler.stream_out().input_ended();
     //等待第一个SYN
     if (_syn_flag == false && seg.header().syn == false) return false;
@@ -45,12 +44,14 @@ bool TCPReceiver::segment_received(const TCPSegment& seg) {
         return true;
     }
     /*判断接收的数据能否放入"接收窗口"*/
+    size_t next_index = _reassembler.stream_out().bytes_written() + 1;//checkpoint
     size_t abs_seqno = unwrap(seg.header().seqno, _isn, next_index);
     std::string data = seg.payload().copy();
     uint64_t left, right;//[left,right):
     left = _reassembler.stream_out().bytes_written();
     right = left + window_size();
-    if (!(abs_seqno - 1 >= right || abs_seqno - 1 + seg.length_in_sequence_space() <= left)) {
+    size_t len = data.size() + (seg.header().fin ? 1 : 0);
+    if (!(abs_seqno - 1 >= right || abs_seqno - 1 + len <= left)) {
         _reassembler.push_substring(data, abs_seqno - 1, seg.header().fin);
         return true;
     }
