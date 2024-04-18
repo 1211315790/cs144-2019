@@ -32,13 +32,13 @@ void StreamReassembler::push_substring(const std::string& data, const size_t ind
     }
     //看看是否可以合并
     string s;
-    size_t tmp_next_offset = _next_offset;
+    size_t tmp_next_index = _next_index;
     std::vector<uint64_t> delete_index;
     for (auto [key_index, value] : _mp) {
-        if (key_index <= tmp_next_offset && key_index + value.size() >= tmp_next_offset + 1)
+        if (key_index <= tmp_next_index && key_index + value.size() >= tmp_next_index + 1)
         {
-            s += value.substr(tmp_next_offset - key_index);
-            tmp_next_offset += value.size() - (tmp_next_offset - key_index);
+            s += value.substr(tmp_next_index - key_index);
+            tmp_next_index += value.size() - (tmp_next_index - key_index);
             delete_index.push_back(key_index);
         }
     }
@@ -52,15 +52,15 @@ void StreamReassembler::push_substring(const std::string& data, const size_t ind
         size_t remain_space = _capacity - use_space;
         if (len <= remain_space) {  //判断剩余的capacity是否够完整写入s
             _output.write(s);
-            _next_offset += s.size();
+            _next_index += s.size();
         }
         else {
             _output.write(s.substr(0, remain_space));
-            _next_offset += remain_space;
+            _next_index += remain_space;
         }
     }
     //出现eof且装配完毕
-    if (_eof_flag && (_next_offset == _eof_index)) {
+    if (_eof_flag && (_next_index >= _eof_index)) {
         _output.end_input();
     }
 }
@@ -69,7 +69,7 @@ size_t StreamReassembler::unassembled_bytes() const {
     std::set<size_t> remain_assemble_char_index;
     for (auto& [index, data] : _mp) {
         for (size_t i = 0; i < data.size(); ++i) {
-            if (index + i >= _next_offset) remain_assemble_char_index.insert(index + i);
+            if (index + i >= _next_index) remain_assemble_char_index.insert(index + i);
         }
     }
     return remain_assemble_char_index.size();

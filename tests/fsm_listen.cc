@@ -26,22 +26,22 @@ int main() {
             test_1.execute(Listen{});
             test_1.execute(Tick(1));
 
-            test_1.send_byte(WrappingInt32{0}, {}, 0);
-            test_1.send_fin(WrappingInt32{0}, {});
+            test_1.send_byte(WrappingInt32{ 0 }, {}, 0);
+            test_1.send_fin(WrappingInt32{ 0 }, {});
             test_1.execute(Tick(1));
-            test_1.execute(ExpectState{State::LISTEN});
+            test_1.execute(ExpectState{ State::LISTEN });
             test_1.execute(ExpectNoSegment{}, "test 1 failed: non-ACK data segment should be ignored");
 
-            test_1.send_syn(WrappingInt32{0}, {});
+            test_1.send_syn(WrappingInt32{ 0 }, {});
             test_1.execute(Tick(1));
 
             TCPSegment seg = test_1.expect_seg(ExpectOneSegment{}.with_syn(true).with_ack(true).with_ackno(1),
-                                               "test 1 failed: no SYN/ACK in response to SYN");
-            test_1.execute(ExpectState{State::SYN_RCVD});
+                "test 1 failed: no SYN/ACK in response to SYN");
+            test_1.execute(ExpectState{ State::SYN_RCVD });
 
             // wrong seqno! should get ACK back but not transition
             const WrappingInt32 syn_seqno = seg.header().seqno;
-            test_1.send_ack(WrappingInt32{0}, syn_seqno + 1);
+            test_1.send_ack(WrappingInt32{ 0 }, syn_seqno + 1);
             test_1.execute(Tick(1));
 
             test_1.execute(
@@ -54,12 +54,13 @@ int main() {
             test_1.execute(
                 ExpectOneSegment{}.with_no_flags().with_ack(true).with_ackno(1).with_seqno(seg.header().seqno + 1));
 
-            test_1.send_ack(WrappingInt32{1}, seg.header().seqno + 1);
+            test_1.send_ack(WrappingInt32{ 1 }, seg.header().seqno + 1);
             test_1.execute(Tick(1));
             test_1.execute(ExpectNoSegment{}, "test 1 failed: no need to ACK an ACK");
-            test_1.execute(ExpectState{State::ESTABLISHED});
+            test_1.execute(ExpectState{ State::ESTABLISHED });
         }
-    } catch (const exception &e) {
+    }
+    catch (const exception& e) {
         cerr << e.what() << endl;
         return 1;
     }

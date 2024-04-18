@@ -39,18 +39,22 @@ bool TCPReceiver::segment_received(const TCPSegment& seg) {
         _isn = seg.header().seqno;
         //FIN
         if (seg.header().fin) {
+            // assert(seg.payload().copy().size() == 0);
+            // _reassembler.push_substring(seg.payload().copy(), 0, true);
             _reassembler.stream_out().end_input();
         }
         return true;
     }
+
     /*判断接收的数据能否放入"接收窗口"*/
-    size_t next_index = _reassembler.stream_out().bytes_written() + 1;//checkpoint
+    size_t next_index = _reassembler.stream_out().bytes_written();//checkpoint
     size_t abs_seqno = unwrap(seg.header().seqno, _isn, next_index);
     std::string data = seg.payload().copy();
     uint64_t left, right;//[left,right):
     left = _reassembler.stream_out().bytes_written();
     right = left + window_size();
     size_t len = data.size() + (seg.header().fin ? 1 : 0);
+    //判断是否在窗口内
     if (!(abs_seqno - 1 >= right || abs_seqno - 1 + len <= left)) {
         _reassembler.push_substring(data, abs_seqno - 1, seg.header().fin);
         return true;
@@ -88,4 +92,4 @@ optional<WrappingInt32> TCPReceiver::ackno() const {
     }
 }
 
-size_t TCPReceiver::window_size() const { return  _capacity - _reassembler.stream_out().buffer_size(); }
+size_t TCPReceiver::window_size() const { return  _reassembler.stream_out().remaining_capacity(); }

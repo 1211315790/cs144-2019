@@ -27,9 +27,9 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
 uint64_t TCPSender::bytes_in_flight() const { return _bytes_in_flight; }
 
 void TCPSender::fill_window() {
-    TCPSegment seg;
     //First SYN did not transmit payload.
     if (!_syn_flag) {
+        TCPSegment seg;
         seg.header().syn = true;
         send_segment(seg);
         _syn_flag = true;
@@ -42,6 +42,7 @@ void TCPSender::fill_window() {
     }
      // when window isn't full and never sent FIN
     while (!_fin_flag) {
+        TCPSegment seg;
         assert(_window_size >= (_next_seqno - _recv_ackno));
         size_t remain = (_window_size - (_next_seqno - _recv_ackno));  // window's free space
         if (remain == 0)
@@ -104,25 +105,33 @@ bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
             break;
         }
     }
+    fill_window();
     _retransmission_timeout = _initial_retransmission_timeout;
+    _consecutive_retransmissions_count = 0;
     // if have other outstanding segment, restart timer
     if (!_segments_outstanding.empty()) {
         _timer_running = true;
         _timer = 0;
     }
-    _consecutive_retransmissions_count = 0;
     return true;
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     _timer += ms_since_last_tick;
-    if (_timer >= _retransmission_timeout && !_segments_outstanding.empty()) {
+    //超时重传
+    if (_timer < _retransmission_timeout) {
+        return;
+    }
+    if (!_segments_outstanding.empty()) {
         _segments_out.push(_segments_outstanding.front());
         _consecutive_retransmissions_count++;
         _retransmission_timeout *= 2;
         _timer_running = true;
         _timer = 0;
+    }
+    else {
+        _timer_running = false;
     }
 
 }
@@ -135,6 +144,12 @@ void TCPSender::send_empty_segment() {
     _segments_out.push(seg);
 }
 
+void TCPSender::send_empty_segment(TCPHeader&& tcp_header) {
+    TCPSegment seg;
+    seg.header() = tcp_header;
+    seg.header().seqno = wrap(_next_seqno, _isn);
+    _segments_out.push(seg);
+}
 void TCPSender::send_segment(TCPSegment& seg) {
     seg.header().seqno = wrap(_next_seqno, _isn);
     _next_seqno += seg.length_in_sequence_space();

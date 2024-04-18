@@ -12,38 +12,131 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-size_t TCPConnection::remaining_outbound_capacity() const { return {}; }
+size_t TCPConnection::remaining_outbound_capacity() const { return _sender.stream_in().remaining_capacity(); }
 
-size_t TCPConnection::bytes_in_flight() const { return {}; }
+size_t TCPConnection::bytes_in_flight() const { return _sender.bytes_in_flight(); }
 
-size_t TCPConnection::unassembled_bytes() const { return {}; }
+size_t TCPConnection::unassembled_bytes() const { return _receiver.unassembled_bytes(); }
 
-size_t TCPConnection::time_since_last_segment_received() const { return {}; }
+size_t TCPConnection::time_since_last_segment_received() const { return _time_since_last_segment_received; }
+void TCPConnection::send_rst_segment() {
+    abort();
+    TCPSegment seg;
+    seg.header().rst = true;
+    _segments_out.push(seg);
+}
+void TCPConnection::abort() {
+    _active = false;
+    _sender.stream_in().set_error();
+    _receiver.stream_out().set_error();
 
-void TCPConnection::segment_received(const TCPSegment &seg) { DUMMY_CODE(seg); }
+}
+void TCPConnection::segment_received(const TCPSegment& seg) {
+    if (!active())
+        return;
+    _time_since_last_segment_received = 0;
+    // 是否需要发送空包回复 ACK，比如没有数据的时候收到 SYN/ACK 也要回一个 ACK
+    bool need_empty_ack = seg.length_in_sequence_space();
+    auto& header = seg.header();
+    // 处理 RST 标志位
+    if (header.rst)
+        return abort();
+    // 将包交给发送者
+    if (header.ack) {
+        need_empty_ack |= !_sender.ack_received(header.ackno, header.win);
+        // 队列中已经有数据报文段了就不需要专门的空包回复 ACK
+        if (!_sender.segments_out().empty())
+            need_empty_ack = false;
+    }
+    // 将包交给接受者
+    need_empty_ack |= !_receiver.segment_received(seg);
+    // 被动连接
+    if (TCPState::state_summary(_receiver) == TCPReceiverStateSummary::SYN_RECV &&
+        TCPState::state_summary(_sender) == TCPSenderStateSummary::CLOSED)
+        return connect();
+    // 被动关闭
+    if (TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
+        TCPState::state_summary(_sender) == TCPSenderStateSummary::SYN_ACKED)
+        _linger_after_streams_finish = false;
+    // LAST_ACK 状态转移到 CLOSED
+    if (TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
+        TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED && !_linger_after_streams_finish) {
+        _active = false;
+        return;
+    }
+    if (need_empty_ack && TCPState::state_summary(_receiver) != TCPReceiverStateSummary::LISTEN)
+        _sender.send_empty_segment();
+    // 发送其余报文段
+    send_segments();
+}
 
-bool TCPConnection::active() const { return {}; }
+bool TCPConnection::active() const {
+    return _active;
+}
 
-size_t TCPConnection::write(const string &data) {
-    DUMMY_CODE(data);
-    return {};
+size_t TCPConnection::write(const string& data) {
+    size_t bytes_written = _sender.stream_in().write(data);
+    send_segments(true);
+    return bytes_written;
 }
 
 //! \param[in] ms_since_last_tick number of milliseconds since the last call to this method
-void TCPConnection::tick(const size_t ms_since_last_tick) { DUMMY_CODE(ms_since_last_tick); }
+void TCPConnection::tick(const size_t ms_since_last_tick) {
+    _sender.tick(ms_since_last_tick);
+    // 重传次数太多时需要断开连接
+    if (_sender.consecutive_retransmissions() > _cfg.MAX_RETX_ATTEMPTS) {
+        return send_rst_segment();
+    }
+    // 重传数据包
+    send_segments();
+    _time_since_last_segment_received += ms_since_last_tick;
+    //  TIME_WAIT 超时等待状态转移到 CLOSED 状态
+    if (TCPState::state_summary(_receiver) == TCPReceiverStateSummary::FIN_RECV &&
+        TCPState::state_summary(_sender) == TCPSenderStateSummary::FIN_ACKED &&
+        _time_since_last_segment_received >= 10 * _cfg.rt_timeout) {
+        _linger_after_streams_finish = false;
+        _active = false;
 
-void TCPConnection::end_input_stream() {}
+    }
+}
 
-void TCPConnection::connect() {}
+void TCPConnection::end_input_stream() {
+   // 发送 FIN
+    _sender.stream_in().end_input();
+    send_segments(true);
+}
+
+void TCPConnection::connect() {
+    //发送SYN建立连接
+    send_segments(true);
+}
+
+void TCPConnection::send_segments(bool fill_window) {
+    if (fill_window)
+        _sender.fill_window();
+    auto& segments = _sender.segments_out();
+    while (!segments.empty()) {
+        auto seg = segments.front();
+        // 设置 ACK、确认应答号和接收窗口大小
+        if (_receiver.ackno()) {
+            seg.header().ackno = _receiver.ackno().value();
+            seg.header().win = _receiver.window_size();
+            seg.header().ack = true;
+        }
+        _segments_out.push(seg);
+        segments.pop();
+    }
+}
 
 TCPConnection::~TCPConnection() {
     try {
         if (active()) {
             cerr << "Warning: Unclean shutdown of TCPConnection\n";
-
             // Your code here: need to send a RST segment to the peer
+            send_rst_segment();
         }
-    } catch (const exception &e) {
+    }
+    catch (const exception& e) {
         std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
     }
 }

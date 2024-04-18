@@ -5,7 +5,7 @@
 #include "stream_reassembler.hh"
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
-
+#include <assert.h>
 #include <optional>
 
 //! \brief The "receiver" part of a TCP implementation.

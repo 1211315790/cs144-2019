@@ -15,7 +15,7 @@ private:
 
   ByteStream _output;  //!< The reassembled in-order byte stream
   size_t _capacity{};    //!< The maximum number of bytes
-  size_t _next_offset{}; //记录下一个数据的偏移
+  size_t _next_index{}; //记录下一个数据的索引
   std::map<uint64_t, std::string> _mp{};
   size_t _unassembled_byte{};
   bool _eof_flag{ false };  //最后的string是否到来（不一定是已经装配了，可能会暂存）
