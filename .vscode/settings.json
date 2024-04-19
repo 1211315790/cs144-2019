@@ -53,7 +53,8 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "cinttypes": "cpp"
     },
     "C_Cpp.default.cppStandard": "c++23"
 }

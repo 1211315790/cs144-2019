@@ -32,7 +32,7 @@ private:
   ByteStream _stream;
   bool _timer_running{ false };
   size_t _timer{ 0 };
-  size_t _window_size{ 1 };
+  uint16_t _window_size{ 1 };
   bool _syn_flag{ false };
   bool _fin_flag{ false };
   uint64_t _recv_ackno{ 0 };

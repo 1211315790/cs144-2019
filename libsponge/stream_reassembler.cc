@@ -37,7 +37,7 @@ void StreamReassembler::push_substring(const std::string& data, const size_t ind
     for (auto [key_index, value] : _mp) {
         if (key_index <= tmp_next_index && key_index + value.size() >= tmp_next_index + 1)
         {
-            s += value.substr(tmp_next_index - key_index);
+            s += std::move(value.substr(tmp_next_index - key_index));
             tmp_next_index += value.size() - (tmp_next_index - key_index);
             delete_index.push_back(key_index);
         }
@@ -51,11 +51,11 @@ void StreamReassembler::push_substring(const std::string& data, const size_t ind
         size_t use_space = _output.bytes_written() - _output.bytes_read();
         size_t remain_space = _capacity - use_space;
         if (len <= remain_space) {  //判断剩余的capacity是否够完整写入s
-            _output.write(s);
+            _output.write(std::move(s));
             _next_index += s.size();
         }
         else {
-            _output.write(s.substr(0, remain_space));
+            _output.write(std::move(s.substr(0, remain_space)));
             _next_index += remain_space;
         }
     }

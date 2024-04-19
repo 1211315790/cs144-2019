@@ -35,11 +35,7 @@ void TCPSender::fill_window() {
         _syn_flag = true;
         return;
     }
-    //零窗口探测
-    if (_window_size == 0) {
-        send_empty_segment();
-        return;
-    }
+    _window_size = _window_size > 0 ? _window_size : 1;
      // when window isn't full and never sent FIN
     while (!_fin_flag) {
         TCPSegment seg;
@@ -141,14 +137,14 @@ unsigned int TCPSender::consecutive_retransmissions() const { return _consecutiv
 void TCPSender::send_empty_segment() {
     TCPSegment seg;
     seg.header().seqno = wrap(_next_seqno, _isn);
-    _segments_out.push(seg);
+    _segments_out.push(std::move(seg));
 }
 
 void TCPSender::send_empty_segment(TCPHeader&& tcp_header) {
     TCPSegment seg;
     seg.header() = tcp_header;
     seg.header().seqno = wrap(_next_seqno, _isn);
-    _segments_out.push(seg);
+    _segments_out.push(std::move(seg));
 }
 void TCPSender::send_segment(TCPSegment& seg) {
     seg.header().seqno = wrap(_next_seqno, _isn);

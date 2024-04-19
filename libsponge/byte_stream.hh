@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <deque>
 #include <list>
+#include "util/buffer.hh"
 #include <string>
 #include <utility>
 
@@ -16,7 +17,8 @@
 class ByteStream {
 private:
   // Your code here -- add private members as necessary.
-  std::deque<char> _deq{};
+  std::deque<std::string> _deq{};
+  size_t _buffer_size{ 0 };
   size_t _capacity{ 0 };
   size_t _write_count{ 0 };
   size_t _read_count{ 0 };

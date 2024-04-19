@@ -3,7 +3,7 @@
         {
             "type": "shell",
             "label": "compiler",
-            "command": "make -j4 ",
+            "command": "make -j8 ",
             "args": [],
             "options": {
                 "cwd": "${workspaceFolder}/build"
