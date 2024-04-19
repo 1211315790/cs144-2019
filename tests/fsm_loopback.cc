@@ -23,12 +23,12 @@ static constexpr unsigned NREPS = 64;
 int main() {
     try {
         TCPConfig cfg{};
-        cfg.recv_capacity = 1000;
+        cfg.recv_capacity = 65000;
         auto rd = get_random_generator();
 
         // loop segments back into the same FSM
         for (unsigned rep_no = 0; rep_no < NREPS; ++rep_no) {
-            const WrappingInt32 rx_offset(117);
+            const WrappingInt32 rx_offset(rd());
             TCPTestHarness test_1 = TCPTestHarness::in_established(cfg, rx_offset - 1, rx_offset - 1);
             test_1.send_ack(rx_offset, rx_offset, 65000);
 

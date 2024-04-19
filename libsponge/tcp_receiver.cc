@@ -39,8 +39,6 @@ bool TCPReceiver::segment_received(const TCPSegment& seg) {
         _isn = seg.header().seqno;
         //FIN
         if (seg.header().fin) {
-            // assert(seg.payload().copy().size() == 0);
-            // _reassembler.push_substring(seg.payload().copy(), 0, true);
             _reassembler.stream_out().end_input();
         }
         return true;
