@@ -116,14 +116,14 @@ void TCPConnection::send_segments(bool fill_window) {
         _sender.fill_window();
     auto& segments = _sender.segments_out();
     while (!segments.empty()) {
-        auto seg = segments.front();
+        auto& seg = segments.front();
         // 设置 ACK、确认应答号和接收窗口大小
         if (_receiver.ackno()) {
             seg.header().ackno = _receiver.ackno().value();
             seg.header().win = _receiver.window_size();
             seg.header().ack = true;
         }
-        _segments_out.push(seg);
+        _segments_out.push(std::move(seg));
         segments.pop();
     }
 }
