@@ -53,9 +53,12 @@ bool TCPReceiver::segment_received(const TCPSegment& seg) {
     uint64_t left, right;//[left,right):
     left = _reassembler.stream_out().bytes_written();
     right = left + window_size();
-    size_t len = data.size() + (seg.header().fin ? 1 : 0);
-    //判断是否在窗口内
-    if (!(abs_seqno - 1 >= right || abs_seqno - 1 + len <= left)) {
+    size_t len = seg.length_in_sequence_space();
+    if (len == 0 && abs_seqno - 1 == left) {
+        return true;
+    }
+   //判断是否在窗口内
+    else if (!(abs_seqno - 1 >= right || abs_seqno - 1 + len <= left)) {
         _reassembler.push_substring(data, abs_seqno - 1, seg.header().fin);
         return true;
     }

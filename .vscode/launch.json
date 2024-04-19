@@ -8,7 +8,7 @@
             "name": "(gdb) 启动",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/build/tests/fsm_active_close",
+            "program": "${workspaceRoot}/build/tests/fsm_loopback",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
