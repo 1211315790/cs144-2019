@@ -44,6 +44,7 @@ private:
   struct waiting_arp_item {
     EthernetFrame frame{};
     size_t ttl{ 0 };
+    std::queue<IPv4Datagram> datagram_queue{};
   };
   //! outbound queue of Ethernet frames that the NetworkInterface wants sent
   std::queue<EthernetFrame> _frames_out{};

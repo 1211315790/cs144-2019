@@ -9,7 +9,7 @@ using namespace std;
 void get_URL(const string& host, const string& path) {
     // Your code here.
     Address addr(host, "http");
-    TCPSocket tcp_socket;
+    CS144TCPSocket tcp_socket;
     tcp_socket.connect(addr);
     tcp_socket.write("GET " + path + " HTTP/1.1\r\n");
     tcp_socket.write("HOST: " + host + "\r\n");
@@ -21,7 +21,7 @@ void get_URL(const string& host, const string& path) {
         cout << ret;
     }
     tcp_socket.close();
-    // tcp_socket.wait_until_closed();
+    tcp_socket.wait_until_closed();
     return;
        // You will need to connect to the "http" service on
        // the computer whose name is in the "host" string,

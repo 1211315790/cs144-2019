@@ -49,7 +49,7 @@ void NetworkInterface::send_datagram(const InternetDatagram& dgram, const Addres
         arp_msg.opcode = ARPMessage::OPCODE_REQUEST;
         arp_msg.sender_ethernet_address = _ethernet_address;
         arp_msg.target_ethernet_address = { 0,0,0,0,0,0 };
-        arp_msg.sender_ip_address = dgram.header().src;
+        arp_msg.sender_ip_address = _ip_address.ipv4_numeric();
         arp_msg.target_ip_address = next_hop.ipv4_numeric();
         EthernetFrame arp_frame;
         arp_frame.header().type = EthernetHeader::TYPE_ARP;
@@ -60,6 +60,7 @@ void NetworkInterface::send_datagram(const InternetDatagram& dgram, const Addres
         warp_item.ttl = 5000;
         warp_item.frame = arp_frame;
         _waiting_reply_arp[next_hop.ipv4_numeric()] = warp_item;
+        _waiting_reply_arp[next_hop.ipv4_numeric()].datagram_queue.push(std::move(dgram));
         _frames_out.push(arp_frame);
     }
 }
@@ -74,7 +75,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame& fra
     //ipv4数据报
     else if (frame.header().type == EthernetHeader::TYPE_IPv4) {
         InternetDatagram ip_datagram;
-        if (ip_datagram.parse(frame.serialize()) == ParseResult::NoError) {
+        if (ip_datagram.parse(frame.payload()) == ParseResult::NoError) {
             return ip_datagram;
         }
         else {
@@ -83,7 +84,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame& fra
     }
     else if (frame.header().type == EthernetHeader::TYPE_ARP) {
         ARPMessage arp_msg;
-        if (arp_msg.parse(frame.serialize()) != ParseResult::NoError) {
+        if (arp_msg.parse(frame.payload()) != ParseResult::NoError) {
             return nullopt;
         }
         _arp_table[arp_msg.sender_ip_address].mac = arp_msg.sender_ethernet_address;
@@ -96,7 +97,6 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame& fra
             reply.sender_ip_address = _ip_address.ipv4_numeric();
             reply.target_ethernet_address = arp_msg.sender_ethernet_address;
             reply.target_ip_address = arp_msg.sender_ip_address;
-
             EthernetFrame arp_frame;
             arp_frame.header().type = EthernetHeader::TYPE_ARP;
             arp_frame.header().src = _ethernet_address;
@@ -104,7 +104,20 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame& fra
             arp_frame.payload() = move(reply.serialize());
             _frames_out.push(arp_frame);
         }
-
+        //如果学习到了ip就发送之前的ipdatagram
+        if (_waiting_reply_arp.count(arp_msg.sender_ip_address)) {
+            auto& q = _waiting_reply_arp[arp_msg.sender_ip_address].datagram_queue;
+            while (!q.empty()) {
+                EthernetFrame frame2;
+                frame2.header().type = EthernetHeader::TYPE_IPv4;
+                frame2.header().src = _ethernet_address;
+                frame2.payload() = std::move(q.front()).serialize();
+                frame2.header().dst = _arp_table[arp_msg.sender_ip_address].mac;
+                _frames_out.push(frame2);
+                q.pop();
+            }
+        }
+        _waiting_reply_arp.erase(arp_msg.sender_ip_address);
     }
     return {};
 }
@@ -112,6 +125,7 @@ optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame& fra
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick(const size_t ms_since_last_tick) {
     _timer += ms_since_last_tick;
+    std::vector<uint32_t> delete_ip;
     //arp_table更新
     for (auto& [ip, item] : _arp_table) {
         if (item.ttl > ms_since_last_tick) {
@@ -119,8 +133,11 @@ void NetworkInterface::tick(const size_t ms_since_last_tick) {
         }
         else
         {
-            _arp_table.erase(ip);
+            delete_ip.push_back(ip);
         }
+    }
+    for (auto ip : delete_ip) {
+        _arp_table.erase(ip);
     }
     //超过5000ms重新发送arp广播
     for (auto& [ip, w_arp_item] : _waiting_reply_arp) {
